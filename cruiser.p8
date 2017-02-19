@@ -8,15 +8,34 @@ function _init()
 		sp=0,
 		x=60,
 		y=40,
-		box = {x1=0,y1=0,x2=7,y2=7}}
+		box = {
+			x1=0,
+			y1=0,
+			x2=7,
+			y2=7
+		}
+	}
   
 	missiles = {}
+	bullets = {}
 	m_toggle = true
 	enemies = {}
-  
+ explosions = {}
+	stars = {}
+	  
+	--create stars
+	for i=1,128 do
+  add(stars,{
+   x=rnd(128),
+   y=rnd(128),
+   s=rnd(2)+1
+  })
+ end  
+	
+	--create intial enemies
 	for i=1,6 do
 		local enemy={
-			sp=5,
+			sp=4,
   	m_x=i*16,
   	m_y=60-i*8,
   	x=-32,
@@ -26,6 +45,31 @@ function _init()
  	add(enemies, enemy)
 	end
   
+end
+
+function fire_bullet()
+
+	local bullet = {
+		x=ship.x,
+		y=ship.y,
+		dx=0,
+		dy=-3,
+		box={
+			x1=2,
+			y1=0,
+			x2=5,
+			y2=4
+		}}
+ 
+ if m_toggle then
+  bullet.sp = 19
+  m_toggle = false
+ else
+  bullet.sp = 20
+ 	m_toggle = true
+	end
+
+	add(bullets, bullet)		
 end
 
 function fire_missile()
@@ -54,6 +98,10 @@ function fire_missile()
 	add(missiles, missile)
 end
 
+function explode(x,y)
+	add(explosions,{x=x,y=y,t=0})
+end
+
 function abs_box(s)
  local box = {}
  box.x1 = s.box.x1 + s.x
@@ -79,9 +127,54 @@ function collision(a,b)
 
 end
 
+function update_stars()
+ for st in all(stars) do
+  st.y += st.s
+  if st.y >= 128 then
+   st.y = 0
+   st.x=rnd(128)
+  end
+ end
+end
+
+function update_weapons(weapons)
+	
+	for w in all(weapons) do
+		w.x+=w.dx
+		w.y+=w.dy
+  
+  if w.y < 0 or w.y > 128 then
+  	del(weapons, w)
+  end
+ 	
+ 	for e in all(enemies) do
+  	
+  	if collision(w,e) then
+    del(enemies,e)
+   	explode(e.x,e.y)
+   end
+  
+  end
+ 
+ end
+	
+end
+
+function update_explosions()
+	for ex in all(explosions) do
+  ex.t+=1
+  if ex.t == 13 then
+   del(explosions, ex)
+  end
+ end
+end
+
 function _update()
  --update the time
  t=t+1
+ 
+ --move the stars
+ update_stars()
  
  --move the enemies
  for e in all(enemies) do
@@ -89,25 +182,13 @@ function _update()
   e.y = e.r*cos(t/50) + e.m_y
 	end
     
- -- update the missiles
- for m in all(missiles) do
-		m.x+=m.dx
-		m.y+=m.dy
-  
-  if m.y < 0 or m.y > 128 then
-  	del(missiles, m)
-  end
- 	
- 	for e in all(enemies) do
-  	
-  	if collision(m,e) then
-    del(enemies,e)
-   end
-  
-  end
- 
- end
+ -- update all weapons
+ update_weapons(missiles)
+ update_weapons(bullets)
 	
+	--update the explosions
+	update_explosions()
+	 
  --set the movement actions
 	if btn(0) then 
 		ship.sp=18
@@ -125,7 +206,11 @@ function _update()
 		ship.sp=0
 	end
 
- if btnp(4) then 
+	if btnp(4) then 
+ 	fire_bullet()
+	end
+	
+ if btnp(5) then 
  	fire_missile()
 	end
 	
@@ -133,14 +218,29 @@ end
 
 function _draw()
 	cls()
-	spr(ship.sp, ship.x, ship.y)
+	
+	for st in all(stars) do
+  pset(st.x,st.y,6)
+ end
+	
  for m in all(missiles) do
  	spr(m.sp, m.x, m.y)
+ end
+ 
+ for b in all(bullets) do
+ 	spr(b.sp, b.x, b.y)
  end
  
  for e in all(enemies) do
  	spr(e.sp, e.x, e.y)
  end
+ 
+ for ex in all(explosions) do
+  circ(ex.x,ex.y,ex.t/2,8+ex.t%3)
+ end
+
+	spr(ship.sp, ship.x, ship.y)
+	
 end
 __gfx__
 00000000000000000070000000000700004004000333333000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -151,8 +251,8 @@ __gfx__
 05500550055005500000000000000000404ff4040333333000000000000000000000000000000000000000000000000000000000000000000000000000000000
 01000010090000900000000000000000404004040330033000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000a0000a00000000000000000004004000033330000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00055000000550000005500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000080000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00055000000550000005500000080000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00055000000550000005500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0a5555a0005555000055550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 09555590a95555100155559a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
